@@ -103,6 +103,15 @@ async function run() {
             console.log(result);
         })
 
+        //get my orders 
+        app.get('/myOrders', async (req, res) => {
+            const email = req.query.email;
+            const filter = { buyerEmail: email };
+            const result = await bookingsCollection.find(filter).toArray();
+            res.send(result);
+            console.log(result);
+        })
+
 
     }
     finally {
