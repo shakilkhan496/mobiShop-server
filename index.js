@@ -1,5 +1,5 @@
 const express = require('express');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 require('dotenv').config();
 const app = express();
@@ -77,6 +77,21 @@ async function run() {
             const user = req.body;
             console.log(user);
             const result = await usersCollection.insertOne(user);
+            res.send(result);
+        })
+
+        //get single product by id
+        app.get('/mobiles', async (req, res) => {
+
+            let query = {};
+            if (req.query._id) {
+                query = {
+                    _id: req.query._id
+                }
+            }
+            filter = { _id: ObjectId(query._id) }
+            console.log(query);
+            const result = await phonesCollection.findOne(filter);
             res.send(result);
         })
 
