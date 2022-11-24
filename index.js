@@ -30,6 +30,7 @@ async function run() {
         const categoryCollection = client.db("mobiShop").collection("categories");
         const phonesCollection = client.db("mobiShop").collection("phones");
         const usersCollection = client.db("mobiShop").collection("users");
+        const bookingsCollection = client.db("mobiShop").collection("bookings");
 
         //get all categories
         app.get('/categories', async (req, res) => {
@@ -37,7 +38,6 @@ async function run() {
             res.send(categories);
 
         })
-
 
         //------------------------------------------------------------------------------
         // app.get('/post', async (req, res) => {
@@ -93,6 +93,14 @@ async function run() {
             console.log(query);
             const result = await phonesCollection.findOne(filter);
             res.send(result);
+        })
+
+        //save booking info to database
+        app.post('/bookings', async (req, res) => {
+            const bookings = req.body;
+            const result = await bookingsCollection.insertOne(bookings);
+            res.send(result);
+            console.log(result);
         })
 
 
