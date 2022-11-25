@@ -2,6 +2,7 @@ const express = require('express');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
 const app = express();
 const port = process.env.PORT || process.env.PORT;
 
@@ -18,11 +19,30 @@ app.get('/', (req, res) => {
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.83izqje.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
-// client.connect(err => {
-//     const collection = client.db("test").collection("devices");
-//     // perform actions on the collection object
-//     client.close();
-// });
+
+
+function verifyJwt(req, res, next) {
+    const authorizationHeaders = req.headers.authorization;
+    if (!authorizationHeaders) {
+        return res.status(401).send({
+            message: 'Unauthorized'
+        })
+    }
+    const token = authorizationHeaders.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+        if (err) {
+            return res.status(401).send({
+                message: 'Unauthorized'
+            })
+        }
+        req.decoded = decoded;
+        next();
+    })
+
+}
+
+
+
 
 async function run() {
     try {
@@ -31,6 +51,20 @@ async function run() {
         const phonesCollection = client.db("mobiShop").collection("phones");
         const usersCollection = client.db("mobiShop").collection("users");
         const bookingsCollection = client.db("mobiShop").collection("bookings");
+
+        //generate JWT
+        app.get('/jwt', async (req, res) => {
+            const email = req.query.email;
+            const filter = { email: email };
+            const user = await usersCollection.findOne(filter);
+            if (user) {
+                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, { expiresIn: '1d' });
+                return res.send({ token: token })
+            }
+            res.status(403).send({
+                message: 'User not found'
+            });
+        })
 
         //get all categories
         app.get('/categories', async (req, res) => {
@@ -104,13 +138,81 @@ async function run() {
         })
 
         //get my orders 
-        app.get('/myOrders', async (req, res) => {
+        app.get('/myOrders', verifyJwt, async (req, res) => {
             const email = req.query.email;
+            const decodedEmail = req.decoded.email;
+            if (email !== decodedEmail) {
+                res.status(403).send({
+                    message: 'Email not verified'
+                })
+            }
             const filter = { buyerEmail: email };
             const result = await bookingsCollection.find(filter).toArray();
             res.send(result);
             console.log(result);
         })
+        //get my products
+        app.get('/myProducts', verifyJwt, async (req, res) => {
+            const email = req.query.email;
+            const decodedEmail = req.decoded.email;
+            if (email !== decodedEmail) {
+                res.status(403).send({
+                    message: 'Email not verified'
+                })
+            }
+            const filter = { sellerEmail: email };
+            const result = await phonesCollection.find(filter).toArray();
+            res.send(result);
+            console.log(result);
+
+
+        })
+
+        //get user by email
+        app.get('/user', async (req, res) => {
+            const email = req.query.email;
+            // const decodedEmail = req.decoded.email;
+            // if (email !== decodedEmail) {
+            //     res.status(403).send({
+            //         message: 'Email not verified'
+            //     })
+            // }
+            const filter = { email: email };
+            const result = await usersCollection.findOne(filter);
+            res.send(result);
+            console.log(result);
+        })
+
+        //individual user admin check
+        app.get('/users/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            res.send({
+                isAdmin: user?.role === 'admin'
+            });
+        })
+
+        app.get('/users/seller/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            console.log(user);
+            res.send({
+                isSeller: user?.slot === 'seller'
+            });
+        })
+
+        app.get('/users/buyer/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            console.log(user);
+            res.send({
+                isUser: user?.slot === 'user'
+            });
+        })
+
 
 
     }
