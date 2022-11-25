@@ -3,6 +3,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
+const { query } = require('express');
 const app = express();
 const port = process.env.PORT || process.env.PORT;
 
@@ -44,6 +45,8 @@ function verifyJwt(req, res, next) {
 
 
 
+
+
 async function run() {
     try {
         console.log('database connection established')
@@ -65,6 +68,20 @@ async function run() {
                 message: 'User not found'
             });
         })
+
+        //admin verify
+        const verifyAdmin = async (req, res, next) => {
+            const decodedEmail = req.decoded.email;
+            const query = { email: decodedEmail }
+            const user = await usersCollection.findOne(query);
+            // admin check result
+            if (user?.role !== 'admin') {
+                return res.status(403).send({
+                    message: 'Forbidden access'
+                })
+            }
+            next();
+        }
 
         //get all categories
         app.get('/categories', async (req, res) => {
@@ -107,10 +124,15 @@ async function run() {
         })
 
         //save user info to database
-        app.post('/users', async (req, res) => {
+        app.put('/users', async (req, res) => {
             const user = req.body;
             console.log(user);
-            const result = await usersCollection.insertOne(user);
+            const filter = { email: user.email };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: user,
+            }
+            const result = await usersCollection.updateOne(filter, updatedDoc, options);
             res.send(result);
         })
 
@@ -245,6 +267,94 @@ async function run() {
             const id = req.body;
             const filter = { _id: ObjectId(id) };
             const result = await phonesCollection.deleteOne(filter);
+            res.send(result);
+        })
+
+        //all seller
+        app.get('/allSeller', verifyJwt, async (req, res) => {
+            filter = { slot: 'seller' }
+            console.log(query);
+            const result = await usersCollection.find(filter).toArray();
+            res.send(result);
+        })
+        app.get('/allUser', verifyJwt, verifyAdmin, async (req, res) => {
+            filter = { slot: 'user' }
+            console.log(query);
+            const result = await usersCollection.find(filter).toArray();
+            res.send(result);
+
+        })
+        //delete seller
+        app.delete('/deleteSeller', verifyJwt, verifyAdmin, async (req, res) => {
+            const id = req.body;
+            const filter = { _id: ObjectId(id) };
+            const result = await usersCollection.deleteOne(filter);
+            res.send(result);
+        })
+        //delete user
+        app.delete('/deleteUser', verifyJwt, verifyAdmin, async (req, res) => {
+            const id = req.body;
+            const filter = { _id: ObjectId(id) };
+            const result = await usersCollection.deleteOne(filter);
+            res.send(result);
+        })
+
+        //report products
+        app.put('/report', verifyJwt, async (req, res) => {
+            const id = req.body;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
+                    reported: true
+                }
+            }
+            const result = await phonesCollection.updateOne(filter, updatedDoc, options);
+            res.send(result);
+        })
+
+        //get reported items
+        app.get('/reported', verifyJwt, verifyAdmin, async (req, res) => {
+            filter = { reported: true }
+            console.log(query);
+            const result = await phonesCollection.find(filter).toArray();
+            res.send(result);
+
+        })
+        //delete reported items
+        app.delete('/deleteReported', verifyJwt, verifyAdmin, async (req, res) => {
+            const id = req.body;
+            const filter = { _id: ObjectId(id) };
+            const result = await phonesCollection.deleteOne(filter);
+            res.send(result);
+        })
+        //verify seller
+        app.put('/verify', verifyJwt, verifyAdmin, async (req, res) => {
+            const id = req.body;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
+                    isVerified: true
+                }
+            }
+            const result = await usersCollection.updateOne(filter, updatedDoc, options);
+
+            res.send(result);
+        })
+        app.put('/verifyState2', verifyJwt, verifyAdmin, async (req, res) => {
+            const email = req.body;
+            const filter = { sellerEmail: email.email };
+
+            console.log(filter);
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
+                    isVerified: true
+                }
+            }
+            const result = await phonesCollection.updateOne(filter, updatedDoc, options);
+
             res.send(result);
         })
 
