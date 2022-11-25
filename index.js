@@ -213,6 +213,41 @@ async function run() {
             });
         })
 
+        app.post('/addProduct', async (req, res) => {
+            const product = req.body;
+            const result = await phonesCollection.insertOne(product);
+            console.log(result);
+
+            res.send(result);
+        })
+
+        //advertisement
+        app.put('/myProducts', async (req, res) => {
+            const id = req.body;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
+                    advertised: true
+                }
+            }
+            const result = await phonesCollection.updateOne(filter, updatedDoc, options);
+            res.send(result);
+        })
+        //get advertisement data
+        app.get('/advertised', async (req, res) => {
+            const filter = { advertised: true };
+            const result = await phonesCollection.find(filter).toArray();
+            res.send(result);
+        })
+        //delete product
+        app.delete('/delete', async (req, res) => {
+            const id = req.body;
+            const filter = { _id: ObjectId(id) };
+            const result = await phonesCollection.deleteOne(filter);
+            res.send(result);
+        })
+
 
 
     }
