@@ -137,7 +137,7 @@ async function run() {
         })
 
         //get single product by id
-        app.get('/mobiles', async (req, res) => {
+        app.get('/mobiles', verifyJwt, async (req, res) => {
 
             let query = {};
             if (req.query._id) {
@@ -191,14 +191,14 @@ async function run() {
         })
 
         //get user by email
-        app.get('/user', async (req, res) => {
+        app.get('/user', verifyJwt, async (req, res) => {
             const email = req.query.email;
-            // const decodedEmail = req.decoded.email;
-            // if (email !== decodedEmail) {
-            //     res.status(403).send({
-            //         message: 'Email not verified'
-            //     })
-            // }
+            const decodedEmail = req.decoded.email;
+            if (email !== decodedEmail) {
+                res.status(403).send({
+                    message: 'Email not verified'
+                })
+            }
             const filter = { email: email };
             const result = await usersCollection.findOne(filter);
             res.send(result);
@@ -244,7 +244,7 @@ async function run() {
         })
 
         //advertisement
-        app.put('/myProducts', async (req, res) => {
+        app.put('/myProducts', verifyJwt, async (req, res) => {
             const id = req.body;
             const filter = { _id: ObjectId(id) };
             const options = { upsert: true };
