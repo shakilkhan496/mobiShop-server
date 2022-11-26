@@ -5,6 +5,9 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const { query } = require('express');
 const app = express();
+
+const stripe = require("stripe")(process.env.STRIPE);
+
 const port = process.env.PORT || process.env.PORT;
 
 //middleware 
@@ -54,6 +57,7 @@ async function run() {
         const phonesCollection = client.db("mobiShop").collection("phones");
         const usersCollection = client.db("mobiShop").collection("users");
         const bookingsCollection = client.db("mobiShop").collection("bookings");
+        const paymentsCollection = client.db("mobiShop").collection("payments");
 
         //generate JWT
         app.get('/jwt', async (req, res) => {
@@ -356,6 +360,54 @@ async function run() {
             const result = await phonesCollection.updateOne(filter, updatedDoc, options);
 
             res.send(result);
+        })
+
+        //get single orders
+        app.get('/orders/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await bookingsCollection.findOne(query);
+            res.send(result);
+        })
+
+        //payments
+        app.post("/create-payment-intent", async (req, res) => {
+            const order = req.body;
+            const price = order.price;
+            const amount = price * 100;
+
+
+            // Create a PaymentIntent with the order amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: 'usd',
+                amount: amount,
+                'payment_method_types': [
+                    'card'
+                ]
+
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        });
+
+        //save the payment
+        app.post('/payments', verifyJwt, async (req, res) => {
+            const payment = req.body;
+            const paymentInfo = await paymentsCollection.insertOne(payment);
+            const productName = payment.productName;
+            const query = { productName: productName };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
+                    paid: true,
+                    status: 'paid',
+
+                }
+            }
+            const update = await phonesCollection.updateOne(query, updatedDoc, options);
+            res.send(paymentInfo);
         })
 
 
