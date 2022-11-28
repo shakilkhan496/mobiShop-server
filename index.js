@@ -414,6 +414,7 @@ async function run() {
                 }
             }
             const update = await phonesCollection.updateOne(query, updatedDoc, options);
+            const updatePay = await bookingsCollection.updateOne(query, updatedDoc, options);
             res.send(paymentInfo);
         })
 
