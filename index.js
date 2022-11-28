@@ -275,10 +275,17 @@ async function run() {
         })
 
         //all seller
-        app.get('/allSeller', verifyJwt, async (req, res) => {
+        app.get('/allSeller', verifyJwt, verifyAdmin, async (req, res) => {
             filter = { slot: 'seller' }
             console.log(query);
             const result = await usersCollection.find(filter).toArray();
+            res.send(result);
+        })
+        app.get('/seller', verifyJwt, async (req, res) => {
+            let query = req.query.email;
+            const filter = { email: query };
+            const result = await usersCollection.findOne(filter);
+            console.log(result);
             res.send(result);
         })
         app.get('/allUser', verifyJwt, verifyAdmin, async (req, res) => {
